@@ -22,14 +22,26 @@ textorbr <- function(htmlnode) {
 teldirlist <- list()
 scrape <- function(url, teldirlist) {
     urlhtml <- html(url)
+    phonetablec <- c()
     if (hasphonetable(urlhtml)) {
-        department <- textorbr(html_node(urlhtml, "h1"))
-        phonetable <- sapply(html_nodes(urlhtml, ".row td"), textorbr)
-        phonetable <- data.table(matrix(phonetable, ncol=4, byrow=TRUE))
-        setnames(phonetable, c("fullname", "title", "telno", "email"))
-        phonetable[,department := department]
-        teldirlist[[department]] <- phonetable
+        h1rowtdnodes <- html_nodes(urlhtml, ".row td, h1")
+        for (node in h1rowtdnodes) {
+            if (html_tag(node) == "h1") {
+                department <- textorbr(node)
+                print(phonetablec)
+                if (!identical(phonetablec, c())) {
+                    phonetable <- data.table(matrix(phonetablec, ncol=4, byrow=TRUE))
+                    setnames(phonetable, c("fullname", "title", "telno", "email"))
+                    phonetable[,department := department]
+                    teldirlist[[department]] <- phonetable
+                    phonetablec <- c()
+                }
+            } else {
+                phonetablec <- c(phonetablec, textorbr(node))
+            }              
+        }
     }
+    
     somelinks <- html_attr(html_nodes(urlhtml, "#tbl_dept_list a"), "href")
     morelinks <- html_attr(html_nodes(urlhtml, "#dept_list_lv2_outline a"), "href")
     links <- c(somelinks, morelinks)
