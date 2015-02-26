@@ -13,7 +13,7 @@ hasphonetable <- function(urlhtml) {
 
 textorbr <- function(htmlnode) {
     converttotext <- function(htmlchild) {
-        if (xml_tag(htmlchild) == "br") {return("<br/>")} else {return(html_text(htmlchild))}
+        if (html_tag(htmlchild) == "br") {return("<br/>")} else {return(html_text(htmlchild))}
     }
     convertedtext <- lapply(html_children(htmlnode), converttotext)
     return(paste0(convertedtext, collapse=""))
@@ -22,23 +22,29 @@ textorbr <- function(htmlnode) {
 teldirlist <- list()
 scrape <- function(url, teldirlist) {
     urlhtml <- html(url)
-    phonetablec <- c()
     if (hasphonetable(urlhtml)) {
+        phonetablec <- c()
+        department <- ""
         h1rowtdnodes <- html_nodes(urlhtml, ".row td, h1")
         for (node in h1rowtdnodes) {
             if (html_tag(node) == "h1") {
-                department <- textorbr(node)
-                print(phonetablec)
-                if (!identical(phonetablec, c())) {
+                if (!is.null(phonetablec)) {
                     phonetable <- data.table(matrix(phonetablec, ncol=4, byrow=TRUE))
                     setnames(phonetable, c("fullname", "title", "telno", "email"))
                     phonetable[,department := department]
                     teldirlist[[department]] <- phonetable
-                    phonetablec <- c()
                 }
+                department <- textorbr(node)
+                phonetablec <- c()
             } else {
                 phonetablec <- c(phonetablec, textorbr(node))
-            }              
+            }             
+        }
+        if (!is.null(phonetablec)) {
+            phonetable <- data.table(matrix(phonetablec, ncol=4, byrow=TRUE))
+            setnames(phonetable, c("fullname", "title", "telno", "email"))
+            phonetable[,department := department]
+            teldirlist[[department]] <- phonetable
         }
     }
     
@@ -52,7 +58,7 @@ scrape <- function(url, teldirlist) {
     return(teldirlist)
 }
 
-                                        # initialurl <- "http://tel.directory.gov.hk/index_ENG.html?accept_disclaimer=yes"
-initialurl <- "http://tel.directory.gov.hk/index_AFCD_ENG.html" 
+initialurl <- "http://tel.directory.gov.hk/index_ENG.html?accept_disclaimer=yes"
 teldirlist <- scrape(initialurl, teldirlist)
 teldir <- rbindlist(teldirlist)
+save(teldir, file = "teldir.Rdata")
